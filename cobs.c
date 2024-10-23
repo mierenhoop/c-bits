@@ -1,23 +1,28 @@
-#include <assert.h>
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
-#include <string.h>
+
+#define CobsMaxOverhead(n) (1 + ((n) + 253) / 254)
 
 /**
  * Encode COBS.
+ *
+ * @returns length of COBS encoded bytes
  */
-void Cobs(uint8_t *d, const uint8_t *s, int n) {
-  assert(0 <= n && n <= 253);
-  uint8_t l = 1;
-  d[n+1] = 0;
-  while (n--) {
-    if (s[n] == 0)
-      d[n+1] = l, l = 0;
-    else
-      d[n+1] = s[n];
-    l++;
+size_t cobs(uint8_t *d, const uint8_t *s, size_t n) {
+  uint8_t l, *b = d, *back = d++;
+  for (l = 1; n--; s++) {
+    if (*s)
+      *d++ = *s, l++;
+    if (*s == 0 || l == 255) {
+      *back = l, l = 1, back = d;
+      if (*s == 0 || n)
+        d++;
+    }
   }
-  d[0] = l;
+  *back = l;
+  *d++ = 0;
+  return d - b;
 }
 
 /**
@@ -25,14 +30,16 @@ void Cobs(uint8_t *d, const uint8_t *s, int n) {
  *
  * @returns true if successful and false if data is corrupt
  */
-bool UnCobs(uint8_t *d, const uint8_t *s, int n) {
-  int l, i = -n;
-  if (2 <= n && n <= 255 && s[0] != 0 && s[n-1] == 0) {
-    n -= 2;
-    memcpy(d, s+1, n);
-    for (i = s[0]-1; i < n && (l = d[i]); i += l)
-      d[i] = 0;
+bool uncobs(uint8_t *d, const uint8_t *s, size_t n) {
+  const uint8_t *e = s + n;
+  uint8_t prv = 255;
+  uint8_t cur;
+  while (s < e && (cur = *s++) && s + cur <= e) {
+    if (cur && prv != 255)
+      *d++ = 0;
+    prv = cur;
+    while (--cur)
+      *d++ = *s++;
   }
-  return i == n;
+  return s == e;
 }
-
