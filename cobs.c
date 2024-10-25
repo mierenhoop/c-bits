@@ -7,20 +7,24 @@
 /**
  * Encode COBS.
  *
+ * @param d is the destination buffer with a size of at least `n +
+ * CobsMaxOverhead(n)`
  * @returns length of COBS encoded bytes
  */
 size_t cobs(uint8_t *d, const uint8_t *s, size_t n) {
-  uint8_t l, *b = d, *back = d++;
-  for (l = 1; n--; s++) {
-    if (*s)
-      *d++ = *s, l++;
-    if (*s == 0 || l == 255) {
-      *back = l, l = 1, back = d;
-      if (*s == 0 || n)
-        d++;
+  uint8_t l = 1, *b = d, *back;
+  if (n > 0) {
+    for (back = d++; n--; s++) {
+      if (*s)
+        *d++ = *s, l++;
+      if (*s == 0 || l == 255) {
+        *back = l, l = 1, back = d;
+        if (*s == 0 || n)
+          d++;
+      }
     }
+    *back = l;
   }
-  *back = l;
   *d++ = 0;
   return d - b;
 }
@@ -28,12 +32,12 @@ size_t cobs(uint8_t *d, const uint8_t *s, size_t n) {
 /**
  * Decode COBS.
  *
+ * @param d is the destination buffer with a size of at least `n`
  * @returns true if successful and false if data is corrupt
  */
-bool uncobs(uint8_t *d, const uint8_t *s, size_t n) {
-  const uint8_t *e = s + n;
-  uint8_t prv = 255;
-  uint8_t cur;
+size_t uncobs(uint8_t *d, const uint8_t *s, size_t n) {
+  const uint8_t *b = d, *e = s + n;
+  uint8_t cur, prv = 255;
   while (s < e && (cur = *s++) && s + cur <= e) {
     if (cur && prv != 255)
       *d++ = 0;
@@ -41,5 +45,5 @@ bool uncobs(uint8_t *d, const uint8_t *s, size_t n) {
     while (--cur)
       *d++ = *s++;
   }
-  return s == e;
+  return s == e ? d - b : 0;
 }

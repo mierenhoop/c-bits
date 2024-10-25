@@ -16,7 +16,7 @@ void DumpHex(const uint8_t *p, int n) {
     uint8_t d[sizeof(data) + CobsMaxOverhead(sizeof(data))], d2[sizeof(data)]; \
     size_t n = cobs(d, data, sizeof(data));                                    \
     DumpHex(d, n);                                                             \
-    assert(uncobs(d2, d, n));                                                  \
+    assert(uncobs(d2, d, n) == sizeof(data));                                  \
     assert(!memcmp(data, d2, sizeof(data)));                                   \
   } while (0)
 
